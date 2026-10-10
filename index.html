@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Simulação Microscópica - Falso 3D</title>
+    <style>
+        body {
+            background-color: #0b0f19;
+            color: #94a3b8;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        h2 {
+            margin: 0 0 10px 0;
+            color: #f8fafc;
+            font-size: 18px;
+            letter-spacing: 1px;
+        }
+        .canvas-container {
+            position: relative;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #1e293b;
+        }
+        canvas {
+            display: block;
+            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+        }
+        .controls {
+            margin-top: 20px;
+            background: #1e293b;
+            padding: 15px 25px;
+            border-radius: 12px;
+            display: flex;
+            gap: 30px;
+            align-items: center;
+            border: 1px solid #334155;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            font-size: 13px;
+        }
+        label { margin-bottom: 6px; color: #cbd5e1; font-weight: 600; }
+        span { color: #38bdf8; }
+        input[type=range] {
+            accent-color: #38bdf8;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>PILHA ELETROQUÍMICA — Nível Microscópico (Falso 3D)</h2>
+
+    <div class="canvas-container">
+        <canvas id="simCanvas" width="900" height="450"></canvas>
+    </div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>Tempo (Linha do Tempo): <span id="timeVal">0</span>%</label>
+            <input type="range" id="timeSlider" min="0" max="100" value="0">
+        </div>
+        <div class="control-group">
+            <label>Proporção Zn (Ânodo): <span id="znVal">8</span></label>
+            <input type="range" id="znSlider" min="2" max="15" value="8">
+        </div>
+        <div class="control-group">
+            <label>Proporção Íons (Cátodo): <span id="ionVal">8</span></label>
+            <input type="range" id="ionSlider" min="2" max="15" value="8">
+        </div>
+    </div>
+
+<script>
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const timeSlider = document.getElementById('timeSlider');
+    const znSlider = document.getElementById('znSlider');
+    const ionSlider = document.getElementById('ionSlider');
+
+    const timeVal = document.getElementById('timeVal');
+    const znVal = document.getElementById('znVal');
+    const ionVal = document.getElementById('ionVal');
+
+    function drawSphere(x, y, radius, colorBase, labelText = "") {
+        // Efeito 3D com gradiente radial simulando luz direcional
+        let grad = ctx.createRadialGradient(x - radius/3, y - radius/3, radius/10, x, y, radius);
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0.3, colorBase);
+        grad.addColorStop(1, '#050505');
+
+        // Sombra da esfera
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetX = 3;
+        ctx.shadowOffsetY = 3;
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Limpar sombras para o texto/outros elementos
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+
+        if (labelText) {
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 10px Segoe UI';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(labelText, x, y);
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        let progress = timeSlider.value / 100;
+        let initialZn = parseInt(znSlider.value);
+        let initialIons = parseInt(ionSlider.value);
+
+        timeVal.innerText = timeSlider.value;
+        znVal.innerText = initialZn;
+        ionVal.innerText = initialIons;
+
+        // --- SOLUÇÃO AQUOSA (Fundo translúcido com gradiente de profundidade) ---
+        // Cuba Esquerda (ZnSO4)
+        let gradLeft = ctx.createLinearGradient(100, 100, 100, 380);
+        gradLeft.addColorStop(0, 'rgba(56, 189, 248, 0.05)');
+        gradLeft.addColorStop(1, 'rgba(56, 189, 248, 0.15)');
+        ctx.fillStyle = gradLeft;
+        ctx.fillRect(80, 120, 320, 260);
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+        ctx.strokeRect(80, 120, 320, 260);
+
+        // Cuba Direita (CuSO4 / Prata)
+        let gradRight = ctx.createLinearGradient(500, 100, 500, 380);
+        gradRight.addColorStop(0, 'rgba(74, 222, 128, 0.05)');
+        gradRight.addColorStop(1, 'rgba(74, 222, 128, 0.15)');
+        ctx.fillStyle = gradRight;
+        ctx.fillRect(500, 120, 320, 260);
+        ctx.strokeStyle = 'rgba(74, 222, 128, 0.3)';
+        ctx.strokeRect(500, 120, 320, 260);
+
+        // --- ELETRODOS (Com efeito 3D metálico) ---
+        // Zinco (Ânodo - Esquerda)
+        let znMetalGrad = ctx.createLinearGradient(120, 150, 180, 150);
+        znMetalGrad.addColorStop(0, '#64748b');
+        znMetalGrad.addColorStop(0.5, '#cbd5e1');
+        znMetalGrad.addColorStop(1, '#475569');
+        ctx.fillStyle = znMetalGrad;
+        ctx.fillRect(120, 150, 40, 200);
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 12px Segoe UI';
+        ctx.textAlign = 'center';
+        ctx.fillText("Placa de Zn (Ânodo)", 140, 135);
+
+        // Cobre/Prata (Cátodo - Direita)
+        let cuMetalGrad = ctx.createLinearGradient(740, 150, 800, 150);
+        cuMetalGrad.addColorStop(0, '#b45309');
+        cuMetalGrad.addColorStop(0.5, '#fbbf24');
+        cuMetalGrad.addColorStop(1, '#92400e');
+        ctx.fillStyle = cuMetalGrad;
+        ctx.fillRect(740, 150, 40, 200);
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillText("Eletrodo (Cátodo)", 760, 135);
+
+        // --- FIAÇÃO EXTERNA E VOLTÍMETRO ---
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(140, 150);
+        ctx.lineTo(140, 70);
+        ctx.lineTo(450, 70);
+        ctx.lineTo(760, 70);
+        ctx.lineTo(760, 150);
+        ctx.stroke();
+
+        // Voltimetro central 3D
+        ctx.fillStyle = '#0f172a';
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(450, 70, 25, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 12px Segoe UI';
+        ctx.textAlign = 'center';
+        ctx.fillText("V", 450, 66);
+        ctx.font = '9px Segoe UI';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText("1.10V", 450, 81);
+
+        // --- FLUXO DE ELÉTRONS NO FIO ---
+        if (progress > 0 && progress < 1) {
+            // Múltiplos elétrons se movendo
+            for (let e = 0; e < 3; e++) {
+                let eProgress = (progress + e * 0.33) % 1;
+                let ex = 140 + eProgress * (760 - 140);
+                drawSphere(ex, 70, 5, '#38bdf8', 'e⁻');
+            }
+        }
+
+        // --- NÍVEL MICRO: ÁTOMOS DE ZINCO NA PLACA E OXIDAÇÃO ---
+        let activeZnCount = Math.max(0, initialZn - Math.floor(progress * initialZn));
+        for (let i = 0; i < initialZn; i++) {
+            let col = i % 2;
+            let row = Math.floor(i / 2);
+            let x = 130 + col * 18;
+            let y = 180 + row * 22;
+            
+            if (i < activeZnCount) {
+                // Átomo sólido integrado na rede cristalina do Zinco
+                drawSphere(x, y, 8, '#94a3b8');
+            } else {
+                // Átomo oxidando e se soltando como íon Zn2+ na solução
+                let floatOffset = (progress * 80) % 60;
+                drawSphere(x + 30 + (i * 10) % 40, y - floatOffset, 9, '#38bdf8', 'Zn²⁺');
+            }
+        }
+
+        // --- NÍVEL MICRO: ÍONS NO CÁTODO E REDUÇÃO ---
+        let reducedCount = Math.floor(progress * initialIons);
+        for (let i = 0; i < initialIons; i++) {
+            let x = 540 + (i * 35) % 120;
+            let y = 180 + (i * 25) % 150;
+
+            if (i >= (initialIons - reducedCount)) {
+                // Íons depositando-se no eletrodo de cobre (Redução)
+                drawSphere(725, 200 + i * 15, 8, '#fbbf24', 'Cu');
+            } else {
+                // Íons flutuando livremente na solução
+                drawSphere(x, y, 9, '#fbbf24', 'Cu²⁺');
+            }
+        }
+    }
+
+    timeSlider.addEventListener('input', draw);
+    znSlider.addEventListener('input', draw);
+    ionSlider.addEventListener('input', draw);
+
+    draw();
+</script>
+
+</body>
+</html>
