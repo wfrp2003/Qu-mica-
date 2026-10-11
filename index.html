@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Simulação Microscópica - Falso 3D</title>
+    <title>Simulação Microscópica - Pilha Eletroquímica</title>
     <style>
         body {
             background-color: #0b0f19;
@@ -12,9 +12,8 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
-            overflow: hidden;
         }
         h2 {
             margin: 0 0 10px 0;
@@ -33,50 +32,83 @@
             display: block;
             background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
         }
-        .controls {
-            margin-top: 20px;
+        .controls-panel {
+            margin-top: 15px;
             background: #1e293b;
             padding: 15px 25px;
             border-radius: 12px;
             display: flex;
-            gap: 30px;
+            flex-wrap: wrap;
+            gap: 20px;
             align-items: center;
+            justify-content: center;
             border: 1px solid #334155;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            max-width: 900px;
         }
         .control-group {
             display: flex;
             flex-direction: column;
-            font-size: 13px;
+            font-size: 12px;
         }
-        label { margin-bottom: 6px; color: #cbd5e1; font-weight: 600; }
+        label { margin-bottom: 4px; color: #cbd5e1; font-weight: 600; }
         span { color: #38bdf8; }
         input[type=range] {
             accent-color: #38bdf8;
             cursor: pointer;
         }
+        .btn-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        button {
+            background-color: #38bdf8;
+            color: #0f172a;
+            border: none;
+            padding: 8px 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover { background-color: #7dd3fc; }
     </style>
 </head>
 <body>
 
-    <h2>PILHA ELETROQUÍMICA — Nível Microscópico (Falso 3D)</h2>
+    <h2>PILHA DE DANIELL — Modelo Microscópico e Termodinâmico</h2>
 
     <div class="canvas-container">
         <canvas id="simCanvas" width="900" height="450"></canvas>
     </div>
 
-    <div class="controls">
+    <div class="controls-panel">
         <div class="control-group">
             <label>Tempo (Linha do Tempo): <span id="timeVal">0</span>%</label>
             <input type="range" id="timeSlider" min="0" max="100" value="0">
         </div>
+        
         <div class="control-group">
-            <label>Proporção Zn (Ânodo): <span id="znVal">8</span></label>
-            <input type="range" id="znSlider" min="2" max="15" value="8">
+            <div class="btn-container" style="margin-top: 16px;">
+                <button id="playBtn">▶ Iniciar</button>
+                <button id="resetBtn" style="background-color: #64748b; color: #fff;">⟲ Reiniciar</button>
+            </div>
         </div>
+
         <div class="control-group">
-            <label>Proporção Íons (Cátodo): <span id="ionVal">8</span></label>
-            <input type="range" id="ionSlider" min="2" max="15" value="8">
+            <label>Duração da Reação: <span id="durationVal">10</span>s</label>
+            <input type="range" id="durationSlider" min="3" max="30" value="10">
+        </div>
+
+        <div class="control-group">
+            <label>Voltagem Ajustada: <span id="voltVal">1.10</span>V</label>
+            <input type="range" id="voltSlider" min="0.0" max="2.0" step="0.05" value="1.10">
+        </div>
+
+        <div class="control-group">
+            <label>Qtd. Átomos (Zn / Cu): <span id="atomsVal">10</span></label>
+            <input type="range" id="atomsSlider" min="4" max="20" value="10">
         </div>
     </div>
 
@@ -85,39 +117,43 @@
     const ctx = canvas.getContext('2d');
 
     const timeSlider = document.getElementById('timeSlider');
-    const znSlider = document.getElementById('znSlider');
-    const ionSlider = document.getElementById('ionSlider');
+    const playBtn = document.getElementById('playBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const durationSlider = document.getElementById('durationSlider');
+    const voltSlider = document.getElementById('voltSlider');
+    const atomsSlider = document.getElementById('atomsSlider');
 
     const timeVal = document.getElementById('timeVal');
-    const znVal = document.getElementById('znVal');
-    const ionVal = document.getElementById('ionVal');
+    const durationVal = document.getElementById('durationVal');
+    const voltVal = document.getElementById('voltVal');
+    const atomsVal = document.getElementById('atomsVal');
+
+    let isPlaying = false;
+    let animationInterval = null;
 
     function drawSphere(x, y, radius, colorBase, labelText = "") {
-        // Efeito 3D com gradiente radial simulando luz direcional
         let grad = ctx.createRadialGradient(x - radius/3, y - radius/3, radius/10, x, y, radius);
         grad.addColorStop(0, '#ffffff');
         grad.addColorStop(0.3, colorBase);
         grad.addColorStop(1, '#050505');
 
-        // Sombra da esfera
         ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-        ctx.shadowBlur = 8;
-        ctx.shadowOffsetX = 3;
-        ctx.shadowOffsetY = 3;
+        ctx.shadowBlur = 6;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
 
         ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Limpar sombras para o texto/outros elementos
         ctx.shadowBlur = 0;
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 0;
 
         if (labelText) {
             ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 10px Segoe UI';
+            ctx.font = 'bold 9px Segoe UI';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(labelText, x, y);
@@ -128,16 +164,17 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         let progress = timeSlider.value / 100;
-        let initialZn = parseInt(znSlider.value);
-        let initialIons = parseInt(ionSlider.value);
+        let totalAtoms = parseInt(atomsSlider.value);
+        let voltage = parseFloat(voltSlider.value);
 
         timeVal.innerText = timeSlider.value;
-        znVal.innerText = initialZn;
-        ionVal.innerText = initialIons;
+        durationVal.innerText = durationSlider.value;
+        voltVal.innerText = voltage.toFixed(2);
+        atomsVal.innerText = totalAtoms;
 
-        // --- SOLUÇÃO AQUOSA (Fundo translúcido com gradiente de profundidade) ---
-        // Cuba Esquerda (ZnSO4)
-        let gradLeft = ctx.createLinearGradient(100, 100, 100, 380);
+        // --- SOLUÇÃO AQUOSA (Esquerda: ZnSO4 | Direita: CuSO4) ---
+        // Cuba Esquerda
+        let gradLeft = ctx.createLinearGradient(100, 120, 100, 380);
         gradLeft.addColorStop(0, 'rgba(56, 189, 248, 0.05)');
         gradLeft.addColorStop(1, 'rgba(56, 189, 248, 0.15)');
         ctx.fillStyle = gradLeft;
@@ -145,113 +182,165 @@
         ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
         ctx.strokeRect(80, 120, 320, 260);
 
-        // Cuba Direita (CuSO4 / Prata)
-        let gradRight = ctx.createLinearGradient(500, 100, 500, 380);
-        gradRight.addColorStop(0, 'rgba(74, 222, 128, 0.05)');
-        gradRight.addColorStop(1, 'rgba(74, 222, 128, 0.15)');
+        // Cuba Direita (Cobre - Azul Característico)
+        let gradRight = ctx.createLinearGradient(500, 120, 500, 380);
+        gradRight.addColorStop(0, 'rgba(37, 99, 235, 0.08)');
+        gradRight.addColorStop(1, 'rgba(37, 99, 235, 0.22)');
         ctx.fillStyle = gradRight;
         ctx.fillRect(500, 120, 320, 260);
-        ctx.strokeStyle = 'rgba(74, 222, 128, 0.3)';
+        ctx.strokeStyle = 'rgba(37, 99, 235, 0.35)';
         ctx.strokeRect(500, 120, 320, 260);
 
-        // --- ELETRODOS (Com efeito 3D metálico) ---
-        // Zinco (Ânodo - Esquerda)
-        let znMetalGrad = ctx.createLinearGradient(120, 150, 180, 150);
+        // --- ELETRODOS ---
+        // Zinco (Ânodo)
+        let znMetalGrad = ctx.createLinearGradient(120, 150, 160, 150);
         znMetalGrad.addColorStop(0, '#64748b');
         znMetalGrad.addColorStop(0.5, '#cbd5e1');
         znMetalGrad.addColorStop(1, '#475569');
         ctx.fillStyle = znMetalGrad;
-        ctx.fillRect(120, 150, 40, 200);
+        ctx.fillRect(120, 150, 35, 200);
         ctx.fillStyle = '#f8fafc';
-        ctx.font = 'bold 12px Segoe UI';
+        ctx.font = 'bold 11px Segoe UI';
         ctx.textAlign = 'center';
-        ctx.fillText("Placa de Zn (Ânodo)", 140, 135);
+        ctx.fillText("Zn (Ânodo)", 137, 135);
 
-        // Cobre/Prata (Cátodo - Direita)
-        let cuMetalGrad = ctx.createLinearGradient(740, 150, 800, 150);
-        cuMetalGrad.addColorStop(0, '#b45309');
-        cuMetalGrad.addColorStop(0.5, '#fbbf24');
-        cuMetalGrad.addColorStop(1, '#92400e');
+        // Cobre (Cátodo)
+        let cuMetalGrad = ctx.createLinearGradient(745, 150, 785, 150);
+        cuMetalGrad.addColorStop(0, '#9a3412');
+        cuMetalGrad.addColorStop(0.5, '#f97316');
+        cuMetalGrad.addColorStop(1, '#7c2d12');
         ctx.fillStyle = cuMetalGrad;
-        ctx.fillRect(740, 150, 40, 200);
+        ctx.fillRect(745, 150, 35, 200);
         ctx.fillStyle = '#f8fafc';
-        ctx.fillText("Eletrodo (Cátodo)", 760, 135);
+        ctx.fillText("Cu (Cátodo)", 762, 135);
 
         // --- FIAÇÃO EXTERNA E VOLTÍMETRO ---
         ctx.strokeStyle = '#e2e8f0';
-        ctx.lineWidth = 4;
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(140, 150);
-        ctx.lineTo(140, 70);
+        ctx.moveTo(137, 150);
+        ctx.lineTo(137, 70);
         ctx.lineTo(450, 70);
-        ctx.lineTo(760, 70);
-        ctx.lineTo(760, 150);
+        ctx.lineTo(762, 70);
+        ctx.lineTo(762, 150);
         ctx.stroke();
 
-        // Voltimetro central 3D
+        // Display de Voltagem Dinâmico
         ctx.fillStyle = '#0f172a';
-        ctx.strokeStyle = '#38bdf8';
+        ctx.strokeStyle = voltage === 0 ? '#ef4444' : (voltage < 1.10 ? '#f59e0b' : '#38bdf8');
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(450, 70, 25, 0, Math.PI * 2);
+        ctx.arc(450, 70, 26, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 12px Segoe UI';
+        
+        ctx.fillStyle = ctx.strokeStyle;
+        ctx.font = 'bold 11px Segoe UI';
         ctx.textAlign = 'center';
-        ctx.fillText("V", 450, 66);
-        ctx.font = '9px Segoe UI';
+        ctx.fillText(voltage.toFixed(2) + "V", 450, 66);
+        ctx.font = '8px Segoe UI';
         ctx.fillStyle = '#94a3b8';
-        ctx.fillText("1.10V", 450, 81);
+        ctx.fillText(voltage == 1.10 ? "Equilíbrio" : (voltage > 1.10 ? "Forçado" : "Espontâneo"), 450, 81);
 
-        // --- FLUXO DE ELÉTRONS NO FIO ---
-        if (progress > 0 && progress < 1) {
-            // Múltiplos elétrons se movendo
-            for (let e = 0; e < 3; e++) {
-                let eProgress = (progress + e * 0.33) % 1;
-                let ex = 140 + eProgress * (760 - 140);
-                drawSphere(ex, 70, 5, '#38bdf8', 'e⁻');
+        // --- FLUXO DE ELÉTRONS (Velocidade proporcional à voltagem) ---
+        if (progress > 0 && progress < 1 && voltage > 0) {
+            let electronCount = Math.max(1, Math.floor(voltage * 3));
+            for (let e = 0; e < electronCount; e++) {
+                let speedFactor = voltage / 1.10;
+                let eProgress = ((progress * speedFactor) + (e * 0.33)) % 1;
+                let ex = 137 + eProgress * (762 - 137);
+                drawSphere(ex, 70, 4, '#38bdf8', 'e⁻');
             }
         }
 
-        // --- NÍVEL MICRO: ÁTOMOS DE ZINCO NA PLACA E OXIDAÇÃO ---
-        let activeZnCount = Math.max(0, initialZn - Math.floor(progress * initialZn));
-        for (let i = 0; i < initialZn; i++) {
+        // --- ESTEQUIOMETRIA MICROSCÓPICA PRECISA ---
+        // Zn(s) -> Zn2+(aq) + 2e-  ||  Cu2+(aq) + 2e- -> Cu(s)
+        let reactedCount = Math.floor(progress * totalAtoms);
+
+        // Eletrodo de Zinco: Desgaste estequiométrico correspondente
+        for (let i = 0; i < totalAtoms; i++) {
             let col = i % 2;
             let row = Math.floor(i / 2);
-            let x = 130 + col * 18;
-            let y = 180 + row * 22;
-            
-            if (i < activeZnCount) {
-                // Átomo sólido integrado na rede cristalina do Zinco
-                drawSphere(x, y, 8, '#94a3b8');
+            let x = 127 + col * 15;
+            let y = 170 + row * 18;
+
+            if (i >= (totalAtoms - reactedCount)) {
+                // Átomo oxidado liberado na solução como íon Zn2+
+                let floatX = x + 40 + (i * 12) % 60;
+                let floatY = y + (i * 8) % 40;
+                drawSphere(floatX, floatY, 8, '#38bdf8', 'Zn²⁺');
             } else {
-                // Átomo oxidando e se soltando como íon Zn2+ na solução
-                let floatOffset = (progress * 80) % 60;
-                drawSphere(x + 30 + (i * 10) % 40, y - floatOffset, 9, '#38bdf8', 'Zn²⁺');
+                // Átomos sólidos restantes na placa de zinco
+                drawSphere(x, y, 7, '#94a3b8');
             }
         }
 
-        // --- NÍVEL MICRO: ÍONS NO CÁTODO E REDUÇÃO ---
-        let reducedCount = Math.floor(progress * initialIons);
-        for (let i = 0; i < initialIons; i++) {
-            let x = 540 + (i * 35) % 120;
-            let y = 180 + (i * 25) % 150;
+        // Solução Cúprica e Cátodo: Íons Cu2+ migrando e se depositando como Cu metálico
+        for (let i = 0; i < totalAtoms; i++) {
+            let startX = 540 + (i * 25) % 120;
+            let startY = 180 + (i * 20) % 140;
 
-            if (i >= (initialIons - reducedCount)) {
-                // Íons depositando-se no eletrodo de cobre (Redução)
-                drawSphere(725, 200 + i * 15, 8, '#fbbf24', 'Cu');
+            if (i < reactedCount) {
+                // Íons Cu2+ reduzidos e depositados na placa de cobre
+                let cuRow = Math.floor(i / 2);
+                let cuCol = i % 2;
+                drawSphere(750 + cuCol * 12, 170 + cuRow * 18, 7, '#f97316', 'Cu');
             } else {
-                // Íons flutuando livremente na solução
-                drawSphere(x, y, 9, '#fbbf24', 'Cu²⁺');
+                // Íons Cu2+ livres na solução antes da redução
+                drawSphere(startX, startY, 8, '#2563eb', 'Cu²⁺');
             }
         }
     }
 
-    timeSlider.addEventListener('input', draw);
-    znSlider.addEventListener('input', draw);
-    ionSlider.addEventListener('input', draw);
+    function updateAnimation() {
+        if (!isPlaying) return;
+        let durationSec = parseFloat(durationSlider.value);
+        let increment = 100 / (durationSec * 60); // 60 fps base
+        
+        let nextVal = parseFloat(timeSlider.value) + increment;
+        if (nextVal >= 100) {
+            nextVal = 100;
+            stopSimulation();
+        }
+        timeSlider.value = nextVal;
+        draw();
+    }
 
+    function startSimulation() {
+        if (isPlaying) {
+            stopSimulation();
+            return;
+        }
+        if (parseFloat(timeSlider.value) >= 100) {
+            timeSlider.value = 0;
+        }
+        isPlaying = true;
+        playBtn.innerText = "⏸ Pausar";
+        playBtn.style.backgroundColor = "#f59e0b";
+        animationInterval = setInterval(updateAnimation, 1000 / 60);
+    }
+
+    function stopSimulation() {
+        isPlaying = false;
+        playBtn.innerText = "▶ Iniciar";
+        playBtn.style.backgroundColor = "#38bdf8";
+        clearInterval(animationInterval);
+    }
+
+    playBtn.addEventListener('click', startSimulation);
+    
+    resetBtn.addEventListener('click', () => {
+        stopSimulation();
+        timeSlider.value = 0;
+        draw();
+    });
+
+    timeSlider.addEventListener('input', () => { if(isPlaying) stopSimulation(); draw(); });
+    durationSlider.addEventListener('input', () => { durationVal.innerText = durationSlider.value; });
+    voltSlider.addEventListener('input', draw);
+    atomsSlider.addEventListener('input', draw);
+
+    // Render inicial
     draw();
 </script>
 
