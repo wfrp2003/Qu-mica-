@@ -122,12 +122,12 @@
 
         <div class="control-group">
             <label>Átomos Zn (Ânodo): <span id="znAtomsVal">10</span></label>
-            <input type="range" id="znAtomsSlider" min="4" max="20" value="10">
+            <input type="range" id="znAtomsSlider" min="4" max="24" value="10">
         </div>
 
         <div class="control-group">
             <label>Íons Cu²⁺ (Cátodo): <span id="cuAtomsVal">10</span></label>
-            <input type="range" id="cuAtomsSlider" min="4" max="20" value="10">
+            <input type="range" id="cuAtomsSlider" min="4" max="24" value="10">
         </div>
     </div>
 
@@ -189,21 +189,17 @@
 
     function updateDescription(voltage, znCount, cuCount) {
         let text = "";
+        let limitante = Math.min(znCount, cuCount);
         if (voltage === 1.10) {
-            text = `<b>Estado de Equilíbrio Padrão (1.10V):</b> A pilha opera no seu potencial termodinâmico ideal. A taxa de oxidação do Zinco ($Zn \\rightarrow Zn^{2+} + 2e^-$) equilibra-se perfeitamente com a redução do Cobre ($Cu^{2+} + 2e^- \\rightarrow Cu$). Corrente estável.`;
-        } else if (voltage > 1.10 && voltage <= 5.0) {
-            text = `<b>Eletrólise / Sobretensão (${voltage.toFixed(1)}V > 1.10V):</b> Uma fonte externa força elétrons no sentido contrário ou acelera drasticamente o fluxo. O fluxo de elétrons e a migração iônica tornam-se intensos (alta amperagem simulada), podendo esgotar rapidamente os reagentes limitantes.`;
-        } else if (voltage > 5.0) {
-            text = `<b>Regime Forçado Extremo (${voltage.toFixed(1)}V):</b> Corrente extremamente alta. Em um experimento real, isso causaria aquecimento ôhmico acentuado, polarização de concentração nos eletrodos e desprendimento de gases parasitas.`;
-        } else if (voltage > 0 && voltage < 1.10) {
-            text = `<b>Sub-potencial (${voltage.toFixed(2)}V):</b> A força motriz é menor que o potencial padrão da pilha. A velocidade de migração dos elétrons diminui proporcionalmente, reduzindo a corrente gerada no circuito externo.`;
+            text = `<b>Estado de Equilíbrio Padrão (1.10V):</b> A pilha opera no potencial termodinâmico ideal. A taxa de oxidação do Zinco equilibra-se com a redução do Cobre.`;
+        } else if (voltage > 1.10) {
+            text = `<b>Eletrólise / Sobretensão (${voltage.toFixed(1)}V):</b> Fonte externa forçando alta intensidade de corrente e migração acelerada de cargas.`;
+        } else if (voltage > 0) {
+            text = `<b>Sub-potencial (${voltage.toFixed(2)}V):</b> Força motriz reduzida, diminuindo a velocidade de transferência de elétrons.`;
         } else {
-            text = `<b>Circuito Aberto / Oposto ($0.0V$):</b> Sem diferença de potencial útil. A reação espontânea cessa e o fluxo de elétrons é interrompido.`;
+            text = `<b>Circuito Aberto ($0.0V$):</b> Sem diferença de potencial; reação espontânea interrompida.`;
         }
-
-        if (znCount !== cuCount) {
-            text += ` <i>Nota estequiométrica:</i> Há desproporção inicial entre os reagentes (${znCount} átomos de Zn vs ${cuCount} íons Cu²⁺); o reagente em menor quantidade limitará o término exato da reação.`;
-        }
+        text += ` <i>Reagente limitante ativo:</i> O processo completo é limitado pelo menor saldo entre os ${znCount} átomos de Zn e os ${cuCount} íons Cu²⁺.`;
         infoText.innerHTML = text;
     }
 
@@ -224,7 +220,6 @@
         updateDescription(voltage, znTotal, cuTotal);
 
         // --- CUBAS E SOLUÇÕES ---
-        // Cuba Esquerda (ZnSO4)
         let gradLeft = ctx.createLinearGradient(100, 110, 100, 360);
         gradLeft.addColorStop(0, 'rgba(56, 189, 248, 0.05)');
         gradLeft.addColorStop(1, 'rgba(56, 189, 248, 0.15)');
@@ -233,7 +228,6 @@
         ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
         ctx.strokeRect(70, 110, 340, 260);
 
-        // Cuba Direita (CuSO4)
         let gradRight = ctx.createLinearGradient(490, 110, 490, 360);
         gradRight.addColorStop(0, 'rgba(37, 99, 235, 0.08)');
         gradRight.addColorStop(1, 'rgba(37, 99, 235, 0.22)');
@@ -243,7 +237,6 @@
         ctx.strokeRect(490, 110, 340, 260);
 
         // --- ELETRODOS ---
-        // Zinco (Ânodo)
         let znMetalGrad = ctx.createLinearGradient(110, 140, 150, 140);
         znMetalGrad.addColorStop(0, '#64748b');
         znMetalGrad.addColorStop(0.5, '#cbd5e1');
@@ -255,7 +248,6 @@
         ctx.textAlign = 'center';
         ctx.fillText("Zn (Ânodo)", 127, 125);
 
-        // Cobre (Cátodo)
         let cuMetalGrad = ctx.createLinearGradient(745, 140, 785, 140);
         cuMetalGrad.addColorStop(0, '#9a3412');
         cuMetalGrad.addColorStop(0.5, '#f97316');
@@ -265,7 +257,7 @@
         ctx.fillStyle = '#f8fafc';
         ctx.fillText("Cu (Cátodo)", 762, 125);
 
-        // --- FIAÇÃO EXTERNA E VOLTÍMETRO ---
+        // --- FIAÇÃO E VOLTÍMETRO ---
         ctx.strokeStyle = '#e2e8f0';
         ctx.lineWidth = 3;
         ctx.beginPath();
@@ -276,7 +268,6 @@
         ctx.lineTo(762, 140);
         ctx.stroke();
 
-        // Display de Voltagem
         ctx.fillStyle = '#0f172a';
         ctx.strokeStyle = voltage === 0 ? '#ef4444' : (voltage < 1.10 ? '#f59e0b' : '#38bdf8');
         ctx.lineWidth = 2;
@@ -304,37 +295,39 @@
             }
         }
 
-        // --- ESTEQUIOMETRIA MICROSCÓPICA INDEPENDENTE ---
-        let znReacted = Math.floor(progress * znTotal);
-        let cuReacted = Math.floor(progress * cuTotal);
+        // --- ESTEQUIOMETRIA ESCALONADA CORRETA ---
+        let effectiveReaction = Math.min(znTotal, cuTotal);
+        let currentReacted = Math.floor(progress * effectiveReaction);
 
-        // Placa de Zinco e Íons Zn2+ liberados
+        // Zinco: desgaste proporcional
         for (let i = 0; i < znTotal; i++) {
             let col = i % 2;
             let row = Math.floor(i / 2);
             let x = 117 + col * 15;
-            let y = 155 + row * 16;
+            let y = 150 + row * 14;
 
-            if (i >= (znTotal - znReacted)) {
-                let floatX = x + 40 + (i * 10) % 70;
-                let floatY = y + (i * 6) % 50;
-                drawSphere(floatX, floatY, 7, '#38bdf8', 'Zn²⁺');
+            if (i >= (znTotal - currentReacted)) {
+                let floatX = x + 45 + (i * 10) % 60;
+                let floatY = y + (i * 5) % 40;
+                drawSphere(floatX, floatY, 6.5, '#38bdf8', 'Zn²⁺');
             } else {
-                drawSphere(x, y, 6.5, '#94a3b8');
+                drawSphere(x, y, 6, '#94a3b8');
             }
         }
 
-        // Íons Cu2+ livres e Depósito no Cátodo
+        // Cobre: íons livres que se convertem em depósito metálico no cátodo de forma equivalente
         for (let i = 0; i < cuTotal; i++) {
-            let startX = 530 + (i * 22) % 150;
-            let startY = 160 + (i * 18) % 140;
+            let startX = 520 + (i % 4) * 25;
+            let startY = 150 + Math.floor(i / 4) * 22;
 
-            if (i < cuReacted) {
-                let cuRow = Math.floor(i / 2);
+            if (i < currentReacted) {
+                // Depositado firmemente no cátodo proporcionalmente à reação real
                 let cuCol = i % 2;
-                drawSphere(752 + cuCol * 11, 155 + cuRow * 16, 6.5, '#f97316', 'Cu');
+                let cuRow = Math.floor(i / 2);
+                drawSphere(753 + cuCol * 10, 150 + cuRow * 14, 6, '#f97316', 'Cu');
             } else {
-                drawSphere(startX, startY, 7, '#2563eb', 'Cu²⁺');
+                // Íons livres na solução
+                drawSphere(startX, startY, 6.5, '#2563eb', 'Cu²⁺');
             }
         }
     }
@@ -389,6 +382,7 @@
         draw();
     });
 
+    timeSlider.value = 0;
     timeSlider.addEventListener('input', (e) => {
         if (isPlaying) stopSimulation();
         currentProgress = parseFloat(e.target.value);
@@ -400,7 +394,6 @@
     znAtomsSlider.addEventListener('input', draw);
     cuAtomsSlider.addEventListener('input', draw);
 
-    // Render inicial
     draw();
 </script>
 
