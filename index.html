@@ -122,16 +122,16 @@
 
         <div class="control-group">
             <label>Zoom: <span id="zoomVal">1.0</span>x</label>
-            <input type="range" id="zoomSlider" min="0.8" max="2.0" step="0.1" value="1.0">
+            <input type="range" id="zoomSlider" min="1.0" max="2.5" step="0.1" value="1.0">
         </div>
 
         <div class="control-group">
-            <label>Zn: <span id="znAtomsVal">10</span></label>
+            <label>Átomos Zn: <span id="znAtomsVal">10</span></label>
             <input type="range" id="znAtomsSlider" min="4" max="24" value="10">
         </div>
 
         <div class="control-group">
-            <label>Cu²⁺: <span id="cuAtomsVal">10</span></label>
+            <label>Íons Cu²⁺: <span id="cuAtomsVal">10</span></label>
             <input type="range" id="cuAtomsSlider" min="4" max="24" value="10">
         </div>
     </div>
@@ -196,6 +196,7 @@
 
     function updateDescription(voltage, znCount, cuCount) {
         let text = "";
+        let limitante = Math.min(znCount, cuCount);
         if (voltage === 1.10) {
             text = `<b>Estado de Equilíbrio Padrão (1.10V):</b> A pilha opera no potencial termodinâmico ideal. A taxa de oxidação do Zinco equilibra-se com a redução do Cobre.`;
         } else if (voltage > 1.10) {
@@ -228,7 +229,7 @@
         updateDescription(voltage, znTotal, cuTotal);
 
         ctx.save();
-        // Aplica o Zoom centralizado na tela
+        // Aplica o Zoom exatamente igual ao Google Maps (aproximando o centro da tela)
         ctx.translate(canvas.width / 2, canvas.height / 2);
         ctx.scale(zoom, zoom);
         ctx.translate(-canvas.width / 2, -canvas.height / 2);
@@ -309,7 +310,7 @@
             }
         }
 
-        // --- ESTEQUIOMETRIA ESCALONADA ---
+        // --- ESTEQUIOMETRIA ESCALONADA CORRETA ---
         let effectiveReaction = Math.min(znTotal, cuTotal);
         let currentReacted = Math.floor(progress * effectiveReaction);
 
@@ -329,7 +330,7 @@
             }
         }
 
-        // Cobre: íons livres e depósito no cátodo
+        // Cobre: íons livres que se convertem em depósito metálico no cátodo de forma equivalente
         for (let i = 0; i < cuTotal; i++) {
             let startX = 520 + (i % 4) * 25;
             let startY = 150 + Math.floor(i / 4) * 22;
@@ -408,19 +409,6 @@
     zoomSlider.addEventListener('input', draw);
     znAtomsSlider.addEventListener('input', draw);
     cuAtomsSlider.addEventListener('input', draw);
-
-    // Suporte a zoom direto com a roda do rato/mouse sobre a tela
-    canvas.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        let currentZoom = parseFloat(zoomSlider.value);
-        if (e.deltaY < 0) {
-            currentZoom = Math.min(2.5, currentZoom + 0.1);
-        } else {
-            currentZoom = Math.max(0.6, currentZoom - 0.1);
-        }
-        zoomSlider.value = currentZoom.toFixed(1);
-        draw();
-    }, { passive: false });
 
     draw();
 </script>
