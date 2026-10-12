@@ -11,51 +11,47 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: space-between;
-            height: 100vh;
+            justify-content: center;
+            min-height: 100vh;
             margin: 0;
-            overflow: hidden;
         }
         h2 {
-            margin: 6px 0 2px 0;
+            margin: 0 0 5px 0;
             color: #f8fafc;
-            font-size: 15px;
+            font-size: 18px;
             letter-spacing: 1px;
-            z-index: 10;
         }
         .canvas-container {
             position: relative;
-            width: 100vw;
-            flex-grow: 1;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+            border-radius: 12px;
             overflow: hidden;
-            margin: 0;
-            padding: 0;
+            border: 1px solid #1e293b;
         }
         canvas {
             display: block;
-            width: 100%;
-            height: 100%;
             background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
         }
         .controls-panel {
+            margin-top: 12px;
             background: #1e293b;
-            padding: 8px 15px;
+            padding: 12px 20px;
+            border-radius: 12px;
             display: flex;
             flex-wrap: wrap;
-            gap: 12px;
+            gap: 15px;
             align-items: center;
             justify-content: center;
-            border-top: 1px solid #334155;
-            width: 100%;
-            box-sizing: border-box;
-            z-index: 10;
+            border: 1px solid #334155;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            max-width: 980px;
         }
         .control-group {
             display: flex;
             flex-direction: column;
             font-size: 11px;
         }
-        label { margin-bottom: 2px; color: #cbd5e1; font-weight: 600; }
+        label { margin-bottom: 3px; color: #cbd5e1; font-weight: 600; }
         span { color: #38bdf8; }
         input[type=range] {
             accent-color: #38bdf8;
@@ -64,31 +60,32 @@
         }
         .btn-container {
             display: flex;
-            gap: 6px;
+            gap: 8px;
             align-items: center;
         }
         button {
             background-color: #38bdf8;
             color: #0f172a;
             border: none;
-            padding: 5px 12px;
+            padding: 6px 14px;
             font-weight: bold;
             border-radius: 6px;
             cursor: pointer;
             transition: background 0.2s;
-            font-size: 11px;
+            font-size: 12px;
         }
         button:hover { background-color: #7dd3fc; }
         .info-box {
-            background: #151c2c;
-            border-top: 2px solid #38bdf8;
-            padding: 6px 15px;
+            margin-top: 10px;
+            background: #1e293b;
+            border-left: 4px solid #38bdf8;
+            padding: 8px 15px;
+            border-radius: 0 8px 8px 0;
+            max-width: 950px;
             width: 100%;
-            font-size: 11px;
+            font-size: 12px;
             color: #e2e8f0;
             box-sizing: border-box;
-            text-align: center;
-            z-index: 10;
         }
     </style>
 </head>
@@ -97,7 +94,7 @@
     <h2>PILHA DE DANIELL — Análise Microscópica e Termodinâmica</h2>
 
     <div class="canvas-container">
-        <canvas id="simCanvas"></canvas>
+        <canvas id="simCanvas" width="900" height="420"></canvas>
     </div>
 
     <div class="controls-panel">
@@ -107,7 +104,7 @@
         </div>
         
         <div class="control-group">
-            <div class="btn-container" style="margin-top: 12px;">
+            <div class="btn-container" style="margin-top: 14px;">
                 <button id="playBtn">▶ Iniciar</button>
                 <button id="resetBtn" style="background-color: #64748b; color: #fff;">⟲ Reiniciar</button>
             </div>
@@ -124,12 +121,17 @@
         </div>
 
         <div class="control-group">
-            <label>Átomos Zn: <span id="znAtomsVal">10</span></label>
+            <label>Zoom: <span id="zoomVal">1.0</span>x</label>
+            <input type="range" id="zoomSlider" min="0.8" max="2.0" step="0.1" value="1.0">
+        </div>
+
+        <div class="control-group">
+            <label>Zn: <span id="znAtomsVal">10</span></label>
             <input type="range" id="znAtomsSlider" min="4" max="24" value="10">
         </div>
 
         <div class="control-group">
-            <label>Íons Cu²⁺: <span id="cuAtomsVal">10</span></label>
+            <label>Cu²⁺: <span id="cuAtomsVal">10</span></label>
             <input type="range" id="cuAtomsSlider" min="4" max="24" value="10">
         </div>
     </div>
@@ -142,24 +144,19 @@
     const canvas = document.getElementById('simCanvas');
     const ctx = canvas.getContext('2d');
 
-    function resizeCanvas() {
-        canvas.width = canvas.parentElement.clientWidth;
-        canvas.height = canvas.parentElement.clientHeight;
-        draw();
-    }
-    window.addEventListener('resize', resizeCanvas);
-
     const timeSlider = document.getElementById('timeSlider');
     const playBtn = document.getElementById('playBtn');
     const resetBtn = document.getElementById('resetBtn');
     const durationSlider = document.getElementById('durationSlider');
     const voltSlider = document.getElementById('voltSlider');
+    const zoomSlider = document.getElementById('zoomSlider');
     const znAtomsSlider = document.getElementById('znAtomsSlider');
     const cuAtomsSlider = document.getElementById('cuAtomsSlider');
 
     const timeVal = document.getElementById('timeVal');
     const durationVal = document.getElementById('durationVal');
     const voltVal = document.getElementById('voltVal');
+    const zoomVal = document.getElementById('zoomVal');
     const znAtomsVal = document.getElementById('znAtomsVal');
     const cuAtomsVal = document.getElementById('cuAtomsVal');
     const infoText = document.getElementById('infoText');
@@ -200,15 +197,15 @@
     function updateDescription(voltage, znCount, cuCount) {
         let text = "";
         if (voltage === 1.10) {
-            text = `<b>Equilíbrio Padrão (1.10V):</b> Potencial termodinâmico ideal. A taxa de oxidação do Zinco equilibra-se com a redução do Cobre.`;
+            text = `<b>Estado de Equilíbrio Padrão (1.10V):</b> A pilha opera no potencial termodinâmico ideal. A taxa de oxidação do Zinco equilibra-se com a redução do Cobre.`;
         } else if (voltage > 1.10) {
-            text = `<b>Eletrólise / Sobretensão (${voltage.toFixed(1)}V):</b> Fonte externa forçando alta intensidade de corrente e migração acelerada.`;
+            text = `<b>Eletrólise / Sobretensão (${voltage.toFixed(1)}V):</b> Fonte externa forçando alta intensidade de corrente e migração acelerada de cargas.`;
         } else if (voltage > 0) {
             text = `<b>Sub-potencial (${voltage.toFixed(2)}V):</b> Força motriz reduzida, diminuindo a velocidade de transferência de elétrons.`;
         } else {
             text = `<b>Circuito Aberto ($0.0V$):</b> Sem diferença de potencial; reação espontânea interrompida.`;
         }
-        text += ` <i>Reagente limitante ativo:</i> Limitado entre os ${znCount} átomos de Zn e os ${cuCount} íons Cu²⁺.`;
+        text += ` <i>Reagente limitante ativo:</i> O processo completo é limitado pelo menor saldo entre os ${znCount} átomos de Zn e os ${cuCount} íons Cu²⁺.`;
         infoText.innerHTML = text;
     }
 
@@ -219,99 +216,87 @@
         let znTotal = parseInt(znAtomsSlider.value);
         let cuTotal = parseInt(cuAtomsSlider.value);
         let voltage = parseFloat(voltSlider.value);
+        let zoom = parseFloat(zoomSlider.value);
 
         timeVal.innerText = Math.round(currentProgress);
         durationVal.innerText = durationSlider.value;
         voltVal.innerText = voltage.toFixed(1);
+        zoomVal.innerText = zoom.toFixed(1);
         znAtomsVal.innerText = znTotal;
         cuAtomsVal.innerText = cuTotal;
 
         updateDescription(voltage, znTotal, cuTotal);
 
-        let cx = canvas.width / 2;
-        let cy = canvas.height / 2;
-
-        let tankWidth = Math.min(380, canvas.width * 0.4);
-        let tankHeight = Math.min(300, canvas.height * 0.7);
-        let tankY = cy - tankHeight / 2 + 10;
-
-        let leftTankX = cx - tankWidth - 50;
-        let rightTankX = cx + 50;
+        ctx.save();
+        // Aplica o Zoom centralizado na tela
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.scale(zoom, zoom);
+        ctx.translate(-canvas.width / 2, -canvas.height / 2);
 
         // --- CUBAS E SOLUÇÕES ---
-        let gradLeft = ctx.createLinearGradient(leftTankX, tankY, leftTankX, tankY + tankHeight);
+        let gradLeft = ctx.createLinearGradient(100, 110, 100, 360);
         gradLeft.addColorStop(0, 'rgba(56, 189, 248, 0.05)');
         gradLeft.addColorStop(1, 'rgba(56, 189, 248, 0.15)');
         ctx.fillStyle = gradLeft;
-        ctx.fillRect(leftTankX, tankY, tankWidth, tankHeight);
+        ctx.fillRect(70, 110, 340, 260);
         ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
-        ctx.strokeRect(leftTankX, tankY, tankWidth, tankHeight);
+        ctx.strokeRect(70, 110, 340, 260);
 
-        let gradRight = ctx.createLinearGradient(rightTankX, tankY, rightTankX, tankY + tankHeight);
+        let gradRight = ctx.createLinearGradient(490, 110, 490, 360);
         gradRight.addColorStop(0, 'rgba(37, 99, 235, 0.08)');
         gradRight.addColorStop(1, 'rgba(37, 99, 235, 0.22)');
         ctx.fillStyle = gradRight;
-        ctx.fillRect(rightTankX, tankY, tankWidth, tankHeight);
+        ctx.fillRect(490, 110, 340, 260);
         ctx.strokeStyle = 'rgba(37, 99, 235, 0.35)';
-        ctx.strokeRect(rightTankX, tankY, tankWidth, tankHeight);
+        ctx.strokeRect(490, 110, 340, 260);
 
         // --- ELETRODOS ---
-        let electrodeWidth = 35;
-        let electrodeHeight = tankHeight * 0.75;
-        let znX = leftTankX + tankWidth * 0.2;
-        let cuX = rightTankX + tankWidth * 0.8 - electrodeWidth;
-        let electrodeY = tankY + tankHeight * 0.15;
-
-        let znMetalGrad = ctx.createLinearGradient(znX, electrodeY, znX + electrodeWidth, electrodeY);
+        let znMetalGrad = ctx.createLinearGradient(110, 140, 150, 140);
         znMetalGrad.addColorStop(0, '#64748b');
         znMetalGrad.addColorStop(0.5, '#cbd5e1');
         znMetalGrad.addColorStop(1, '#475569');
         ctx.fillStyle = znMetalGrad;
-        ctx.fillRect(znX, electrodeY, electrodeWidth, electrodeHeight);
+        ctx.fillRect(110, 140, 35, 190);
         ctx.fillStyle = '#f8fafc';
         ctx.font = 'bold 11px Segoe UI';
         ctx.textAlign = 'center';
-        ctx.fillText("Zn (Ânodo)", znX + electrodeWidth/2, electrodeY - 15);
+        ctx.fillText("Zn (Ânodo)", 127, 125);
 
-        let cuMetalGrad = ctx.createLinearGradient(cuX, electrodeY, cuX + electrodeWidth, electrodeY);
+        let cuMetalGrad = ctx.createLinearGradient(745, 140, 785, 140);
         cuMetalGrad.addColorStop(0, '#9a3412');
         cuMetalGrad.addColorStop(0.5, '#f97316');
         cuMetalGrad.addColorStop(1, '#7c2d12');
         ctx.fillStyle = cuMetalGrad;
-        ctx.fillRect(cuX, electrodeY, electrodeWidth, electrodeHeight);
+        ctx.fillRect(745, 140, 35, 190);
         ctx.fillStyle = '#f8fafc';
-        ctx.fillText("Cu (Cátodo)", cuX + electrodeWidth/2, electrodeY - 15);
+        ctx.fillText("Cu (Cátodo)", 762, 125);
 
         // --- FIAÇÃO E VOLTÍMETRO ---
-        let wireY = electrodeY - 55;
-        let znWireX = znX + electrodeWidth/2;
-        let cuWireX = cuX + electrodeWidth/2;
-
         ctx.strokeStyle = '#e2e8f0';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(znWireX, electrodeY);
-        ctx.lineTo(znWireX, wireY);
-        ctx.lineTo(cx, wireY);
-        ctx.lineTo(cuWireX, wireY);
-        ctx.lineTo(cuWireX, electrodeY);
+        ctx.moveTo(127, 140);
+        ctx.lineTo(127, 65);
+        ctx.lineTo(450, 65);
+        ctx.lineTo(762, 65);
+        ctx.lineTo(762, 140);
         ctx.stroke();
 
         ctx.fillStyle = '#0f172a';
         ctx.strokeStyle = voltage === 0 ? '#ef4444' : (voltage < 1.10 ? '#f59e0b' : '#38bdf8');
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(cx, wireY, 24, 0, Math.PI * 2);
+        ctx.arc(450, 65, 25, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
         
         ctx.fillStyle = ctx.strokeStyle;
         ctx.font = 'bold 11px Segoe UI';
         ctx.textAlign = 'center';
-        ctx.fillText(voltage.toFixed(1) + "V", cx, wireY - 4);
+        ctx.fillText(voltage.toFixed(1) + "V", 450, 61);
         ctx.font = '8px Segoe UI';
         ctx.fillStyle = '#94a3b8';
-        ctx.fillText(voltage > 1.10 ? "Forçado" : "Espontâneo", cx, wireY + 10);
+        ctx.fillText(voltage > 1.10 ? "Forçado" : "Espontâneo", 450, 75);
 
         // --- FLUXO DE ELÉTRONS ---
         if (progress > 0 && progress < 1 && voltage > 0) {
@@ -319,8 +304,8 @@
             for (let e = 0; e < electronCount; e++) {
                 let speedFactor = Math.max(0.2, voltage / 1.10);
                 let eProgress = ((progress * speedFactor * 1.5) + (e * (1 / electronCount))) % 1;
-                let ex = znWireX + eProgress * (cuWireX - znWireX);
-                drawSphere(ex, wireY, 4, '#38bdf8', 'e⁻');
+                let ex = 127 + eProgress * (762 - 127);
+                drawSphere(ex, 65, 4, '#38bdf8', 'e⁻');
             }
         }
 
@@ -332,31 +317,33 @@
         for (let i = 0; i < znTotal; i++) {
             let col = i % 2;
             let row = Math.floor(i / 2);
-            let x = znX + 5 + col * 14;
-            let y = electrodeY + 20 + row * 14;
+            let x = 117 + col * 15;
+            let y = 150 + row * 14;
 
             if (i >= (znTotal - currentReacted)) {
-                let floatX = x + 40 + (i * 8) % 50;
-                let floatY = y + (i * 4) % 40;
-                drawSphere(floatX, floatY, 6, '#38bdf8', 'Zn²⁺');
+                let floatX = x + 45 + (i * 10) % 60;
+                let floatY = y + (i * 5) % 40;
+                drawSphere(floatX, floatY, 6.5, '#38bdf8', 'Zn²⁺');
             } else {
-                drawSphere(x, y, 5.5, '#94a3b8');
+                drawSphere(x, y, 6, '#94a3b8');
             }
         }
 
         // Cobre: íons livres e depósito no cátodo
         for (let i = 0; i < cuTotal; i++) {
-            let startX = rightTankX + 35 + (i % 4) * 40;
-            let startY = tankY + 40 + Math.floor(i / 4) * 28;
+            let startX = 520 + (i % 4) * 25;
+            let startY = 150 + Math.floor(i / 4) * 22;
 
             if (i < currentReacted) {
                 let cuCol = i % 2;
                 let cuRow = Math.floor(i / 2);
-                drawSphere(cuX + 5 + cuCol * 12, electrodeY + 20 + cuRow * 14, 5.5, '#f97316', 'Cu');
+                drawSphere(753 + cuCol * 10, 150 + cuRow * 14, 6, '#f97316', 'Cu');
             } else {
-                drawSphere(startX, startY, 6, '#2563eb', 'Cu²⁺');
+                drawSphere(startX, startY, 6.5, '#2563eb', 'Cu²⁺');
             }
         }
+
+        ctx.restore();
     }
 
     function loop(timestamp) {
@@ -418,10 +405,24 @@
 
     durationSlider.addEventListener('input', () => { durationVal.innerText = durationSlider.value; });
     voltSlider.addEventListener('input', draw);
+    zoomSlider.addEventListener('input', draw);
     znAtomsSlider.addEventListener('input', draw);
     cuAtomsSlider.addEventListener('input', draw);
 
-    resizeCanvas();
+    // Suporte a zoom direto com a roda do rato/mouse sobre a tela
+    canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        let currentZoom = parseFloat(zoomSlider.value);
+        if (e.deltaY < 0) {
+            currentZoom = Math.min(2.5, currentZoom + 0.1);
+        } else {
+            currentZoom = Math.max(0.6, currentZoom - 0.1);
+        }
+        zoomSlider.value = currentZoom.toFixed(1);
+        draw();
+    }, { passive: false });
+
+    draw();
 </script>
 
 </body>
