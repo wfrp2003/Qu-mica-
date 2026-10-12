@@ -17,18 +17,19 @@
             overflow: hidden;
         }
         h2 {
-            margin: 8px 0 4px 0;
+            margin: 6px 0 2px 0;
             color: #f8fafc;
-            font-size: 16px;
+            font-size: 15px;
             letter-spacing: 1px;
+            z-index: 10;
         }
         .canvas-container {
             position: relative;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-            overflow: hidden;
-            border: none;
             width: 100vw;
             flex-grow: 1;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
         }
         canvas {
             display: block;
@@ -38,55 +39,56 @@
         }
         .controls-panel {
             background: #1e293b;
-            padding: 10px 20px;
+            padding: 8px 15px;
             display: flex;
             flex-wrap: wrap;
-            gap: 15px;
+            gap: 12px;
             align-items: center;
             justify-content: center;
             border-top: 1px solid #334155;
-            box-shadow: 0 -10px 15px -3px rgba(0, 0, 0, 0.3);
             width: 100%;
             box-sizing: border-box;
+            z-index: 10;
         }
         .control-group {
             display: flex;
             flex-direction: column;
             font-size: 11px;
         }
-        label { margin-bottom: 3px; color: #cbd5e1; font-weight: 600; }
+        label { margin-bottom: 2px; color: #cbd5e1; font-weight: 600; }
         span { color: #38bdf8; }
         input[type=range] {
             accent-color: #38bdf8;
             cursor: pointer;
-            width: 120px;
+            width: 110px;
         }
         .btn-container {
             display: flex;
-            gap: 8px;
+            gap: 6px;
             align-items: center;
         }
         button {
             background-color: #38bdf8;
             color: #0f172a;
             border: none;
-            padding: 6px 14px;
+            padding: 5px 12px;
             font-weight: bold;
             border-radius: 6px;
             cursor: pointer;
             transition: background 0.2s;
-            font-size: 12px;
+            font-size: 11px;
         }
         button:hover { background-color: #7dd3fc; }
         .info-box {
             background: #151c2c;
             border-top: 2px solid #38bdf8;
-            padding: 8px 20px;
+            padding: 6px 15px;
             width: 100%;
             font-size: 11px;
             color: #e2e8f0;
             box-sizing: border-box;
             text-align: center;
+            z-index: 10;
         }
     </style>
 </head>
@@ -100,12 +102,12 @@
 
     <div class="controls-panel">
         <div class="control-group">
-            <label>Tempo (Linha do Tempo): <span id="timeVal">0</span>%</label>
+            <label>Tempo: <span id="timeVal">0</span>%</label>
             <input type="range" id="timeSlider" min="0" max="100" value="0">
         </div>
         
         <div class="control-group">
-            <div class="btn-container" style="margin-top: 14px;">
+            <div class="btn-container" style="margin-top: 12px;">
                 <button id="playBtn">▶ Iniciar</button>
                 <button id="resetBtn" style="background-color: #64748b; color: #fff;">⟲ Reiniciar</button>
             </div>
@@ -117,17 +119,17 @@
         </div>
 
         <div class="control-group">
-            <label>Voltagem Aplicada: <span id="voltVal">1.10</span>V</label>
+            <label>Voltagem: <span id="voltVal">1.10</span>V</label>
             <input type="range" id="voltSlider" min="0.0" max="10.0" step="0.1" value="1.10">
         </div>
 
         <div class="control-group">
-            <label>Átomos Zn (Ânodo): <span id="znAtomsVal">10</span></label>
+            <label>Átomos Zn: <span id="znAtomsVal">10</span></label>
             <input type="range" id="znAtomsSlider" min="4" max="24" value="10">
         </div>
 
         <div class="control-group">
-            <label>Íons Cu²⁺ (Cátodo): <span id="cuAtomsVal">10</span></label>
+            <label>Íons Cu²⁺: <span id="cuAtomsVal">10</span></label>
             <input type="range" id="cuAtomsSlider" min="4" max="24" value="10">
         </div>
     </div>
@@ -140,7 +142,6 @@
     const canvas = document.getElementById('simCanvas');
     const ctx = canvas.getContext('2d');
 
-    // Ajusta o tamanho real do canvas para ocupar a tela dinamicamente
     function resizeCanvas() {
         canvas.width = canvas.parentElement.clientWidth;
         canvas.height = canvas.parentElement.clientHeight;
@@ -199,15 +200,15 @@
     function updateDescription(voltage, znCount, cuCount) {
         let text = "";
         if (voltage === 1.10) {
-            text = `<b>Estado de Equilíbrio Padrão (1.10V):</b> A pilha opera no potencial termodinâmico ideal. A taxa de oxidação do Zinco equilibra-se com a redução do Cobre.`;
+            text = `<b>Equilíbrio Padrão (1.10V):</b> Potencial termodinâmico ideal. A taxa de oxidação do Zinco equilibra-se com a redução do Cobre.`;
         } else if (voltage > 1.10) {
-            text = `<b>Eletrólise / Sobretensão (${voltage.toFixed(1)}V):</b> Fonte externa forçando alta intensidade de corrente e migração acelerada de cargas.`;
+            text = `<b>Eletrólise / Sobretensão (${voltage.toFixed(1)}V):</b> Fonte externa forçando alta intensidade de corrente e migração acelerada.`;
         } else if (voltage > 0) {
             text = `<b>Sub-potencial (${voltage.toFixed(2)}V):</b> Força motriz reduzida, diminuindo a velocidade de transferência de elétrons.`;
         } else {
             text = `<b>Circuito Aberto ($0.0V$):</b> Sem diferença de potencial; reação espontânea interrompida.`;
         }
-        text += ` <i>Reagente limitante ativo:</i> O processo completo é limitado pelo menor saldo entre os ${znCount} átomos de Zn e os ${cuCount} íons Cu²⁺.`;
+        text += ` <i>Reagente limitante ativo:</i> Limitado entre os ${znCount} átomos de Zn e os ${cuCount} íons Cu²⁺.`;
         infoText.innerHTML = text;
     }
 
@@ -227,16 +228,15 @@
 
         updateDescription(voltage, znTotal, cuTotal);
 
-        // Coordenadas centrais dinâmicas baseadas no tamanho da tela
         let cx = canvas.width / 2;
         let cy = canvas.height / 2;
 
-        let tankWidth = Math.min(340, canvas.width * 0.35);
-        let tankHeight = Math.min(260, canvas.height * 0.6);
-        let tankY = cy - tankHeight / 2 + 20;
+        let tankWidth = Math.min(380, canvas.width * 0.4);
+        let tankHeight = Math.min(300, canvas.height * 0.7);
+        let tankY = cy - tankHeight / 2 + 10;
 
-        let leftTankX = cx - tankWidth - 40;
-        let rightTankX = cx + 40;
+        let leftTankX = cx - tankWidth - 50;
+        let rightTankX = cx + 50;
 
         // --- CUBAS E SOLUÇÕES ---
         let gradLeft = ctx.createLinearGradient(leftTankX, tankY, leftTankX, tankY + tankHeight);
@@ -283,7 +283,7 @@
         ctx.fillText("Cu (Cátodo)", cuX + electrodeWidth/2, electrodeY - 15);
 
         // --- FIAÇÃO E VOLTÍMETRO ---
-        let wireY = electrodeY - 60;
+        let wireY = electrodeY - 55;
         let znWireX = znX + electrodeWidth/2;
         let cuWireX = cuX + electrodeWidth/2;
 
@@ -301,7 +301,7 @@
         ctx.strokeStyle = voltage === 0 ? '#ef4444' : (voltage < 1.10 ? '#f59e0b' : '#38bdf8');
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(cx, wireY, 25, 0, Math.PI * 2);
+        ctx.arc(cx, wireY, 24, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
         
@@ -336,8 +336,8 @@
             let y = electrodeY + 20 + row * 14;
 
             if (i >= (znTotal - currentReacted)) {
-                let floatX = x + 35 + (i * 8) % 40;
-                let floatY = y + (i * 4) % 30;
+                let floatX = x + 40 + (i * 8) % 50;
+                let floatY = y + (i * 4) % 40;
                 drawSphere(floatX, floatY, 6, '#38bdf8', 'Zn²⁺');
             } else {
                 drawSphere(x, y, 5.5, '#94a3b8');
@@ -346,8 +346,8 @@
 
         // Cobre: íons livres e depósito no cátodo
         for (let i = 0; i < cuTotal; i++) {
-            let startX = rightTankX + 30 + (i % 4) * 35;
-            let startY = tankY + 40 + Math.floor(i / 4) * 25;
+            let startX = rightTankX + 35 + (i % 4) * 40;
+            let startY = tankY + 40 + Math.floor(i / 4) * 28;
 
             if (i < currentReacted) {
                 let cuCol = i % 2;
@@ -421,7 +421,6 @@
     znAtomsSlider.addEventListener('input', draw);
     cuAtomsSlider.addEventListener('input', draw);
 
-    // Inicialização do tamanho da tela
     resizeCanvas();
 </script>
 
