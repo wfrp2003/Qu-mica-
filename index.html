@@ -11,42 +11,43 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            min-height: 100vh;
+            justify-content: space-between;
+            height: 100vh;
             margin: 0;
-            transform-origin: top center; /* Mantém o zoom fixo no topo ao ampliar */
-            transition: transform 0.1s ease-out;
+            overflow: hidden;
         }
         h2 {
-            margin: 0 0 5px 0;
+            margin: 8px 0 4px 0;
             color: #f8fafc;
-            font-size: 18px;
+            font-size: 16px;
             letter-spacing: 1px;
         }
         .canvas-container {
             position: relative;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-            border-radius: 12px;
             overflow: hidden;
-            border: 1px solid #1e293b;
+            border: none;
+            width: 100vw;
+            flex-grow: 1;
         }
         canvas {
             display: block;
+            width: 100%;
+            height: 100%;
             background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
         }
         .controls-panel {
-            margin-top: 12px;
             background: #1e293b;
-            padding: 12px 20px;
-            border-radius: 12px;
+            padding: 10px 20px;
             display: flex;
             flex-wrap: wrap;
             gap: 15px;
             align-items: center;
             justify-content: center;
-            border: 1px solid #334155;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
-            max-width: 950px;
+            border-top: 1px solid #334155;
+            box-shadow: 0 -10px 15px -3px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            box-sizing: border-box;
         }
         .control-group {
             display: flex;
@@ -58,7 +59,7 @@
         input[type=range] {
             accent-color: #38bdf8;
             cursor: pointer;
-            width: 110px;
+            width: 120px;
         }
         .btn-container {
             display: flex;
@@ -78,16 +79,14 @@
         }
         button:hover { background-color: #7dd3fc; }
         .info-box {
-            margin-top: 10px;
-            background: #1e293b;
-            border-left: 4px solid #38bdf8;
-            padding: 8px 15px;
-            border-radius: 0 8px 8px 0;
-            max-width: 920px;
+            background: #151c2c;
+            border-top: 2px solid #38bdf8;
+            padding: 8px 20px;
             width: 100%;
-            font-size: 12px;
+            font-size: 11px;
             color: #e2e8f0;
             box-sizing: border-box;
+            text-align: center;
         }
     </style>
 </head>
@@ -96,12 +95,12 @@
     <h2>PILHA DE DANIELL — Análise Microscópica e Termodinâmica</h2>
 
     <div class="canvas-container">
-        <canvas id="simCanvas" width="900" height="420"></canvas>
+        <canvas id="simCanvas"></canvas>
     </div>
 
     <div class="controls-panel">
         <div class="control-group">
-            <label>Tempo: <span id="timeVal">0</span>%</label>
+            <label>Tempo (Linha do Tempo): <span id="timeVal">0</span>%</label>
             <input type="range" id="timeSlider" min="0" max="100" value="0">
         </div>
         
@@ -118,22 +117,17 @@
         </div>
 
         <div class="control-group">
-            <label>Voltagem: <span id="voltVal">1.10</span>V</label>
+            <label>Voltagem Aplicada: <span id="voltVal">1.10</span>V</label>
             <input type="range" id="voltSlider" min="0.0" max="10.0" step="0.1" value="1.10">
         </div>
 
         <div class="control-group">
-            <label>Zoom Tela: <span id="zoomVal">100</span>%</label>
-            <input type="range" id="zoomSlider" min="80" max="180" step="5" value="100">
-        </div>
-
-        <div class="control-group">
-            <label>Átomos Zn: <span id="znAtomsVal">10</span></label>
+            <label>Átomos Zn (Ânodo): <span id="znAtomsVal">10</span></label>
             <input type="range" id="znAtomsSlider" min="4" max="24" value="10">
         </div>
 
         <div class="control-group">
-            <label>Íons Cu²⁺: <span id="cuAtomsVal">10</span></label>
+            <label>Íons Cu²⁺ (Cátodo): <span id="cuAtomsVal">10</span></label>
             <input type="range" id="cuAtomsSlider" min="4" max="24" value="10">
         </div>
     </div>
@@ -146,19 +140,25 @@
     const canvas = document.getElementById('simCanvas');
     const ctx = canvas.getContext('2d');
 
+    // Ajusta o tamanho real do canvas para ocupar a tela dinamicamente
+    function resizeCanvas() {
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = canvas.parentElement.clientHeight;
+        draw();
+    }
+    window.addEventListener('resize', resizeCanvas);
+
     const timeSlider = document.getElementById('timeSlider');
     const playBtn = document.getElementById('playBtn');
     const resetBtn = document.getElementById('resetBtn');
     const durationSlider = document.getElementById('durationSlider');
     const voltSlider = document.getElementById('voltSlider');
-    const zoomSlider = document.getElementById('zoomSlider');
     const znAtomsSlider = document.getElementById('znAtomsSlider');
     const cuAtomsSlider = document.getElementById('cuAtomsSlider');
 
     const timeVal = document.getElementById('timeVal');
     const durationVal = document.getElementById('durationVal');
     const voltVal = document.getElementById('voltVal');
-    const zoomVal = document.getElementById('zoomVal');
     const znAtomsVal = document.getElementById('znAtomsVal');
     const cuAtomsVal = document.getElementById('cuAtomsVal');
     const infoText = document.getElementById('infoText');
@@ -198,7 +198,6 @@
 
     function updateDescription(voltage, znCount, cuCount) {
         let text = "";
-        let limitante = Math.min(znCount, cuCount);
         if (voltage === 1.10) {
             text = `<b>Estado de Equilíbrio Padrão (1.10V):</b> A pilha opera no potencial termodinâmico ideal. A taxa de oxidação do Zinco equilibra-se com a redução do Cobre.`;
         } else if (voltage > 1.10) {
@@ -228,70 +227,91 @@
 
         updateDescription(voltage, znTotal, cuTotal);
 
+        // Coordenadas centrais dinâmicas baseadas no tamanho da tela
+        let cx = canvas.width / 2;
+        let cy = canvas.height / 2;
+
+        let tankWidth = Math.min(340, canvas.width * 0.35);
+        let tankHeight = Math.min(260, canvas.height * 0.6);
+        let tankY = cy - tankHeight / 2 + 20;
+
+        let leftTankX = cx - tankWidth - 40;
+        let rightTankX = cx + 40;
+
         // --- CUBAS E SOLUÇÕES ---
-        let gradLeft = ctx.createLinearGradient(100, 110, 100, 360);
+        let gradLeft = ctx.createLinearGradient(leftTankX, tankY, leftTankX, tankY + tankHeight);
         gradLeft.addColorStop(0, 'rgba(56, 189, 248, 0.05)');
         gradLeft.addColorStop(1, 'rgba(56, 189, 248, 0.15)');
         ctx.fillStyle = gradLeft;
-        ctx.fillRect(70, 110, 340, 260);
+        ctx.fillRect(leftTankX, tankY, tankWidth, tankHeight);
         ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
-        ctx.strokeRect(70, 110, 340, 260);
+        ctx.strokeRect(leftTankX, tankY, tankWidth, tankHeight);
 
-        let gradRight = ctx.createLinearGradient(490, 110, 490, 360);
+        let gradRight = ctx.createLinearGradient(rightTankX, tankY, rightTankX, tankY + tankHeight);
         gradRight.addColorStop(0, 'rgba(37, 99, 235, 0.08)');
         gradRight.addColorStop(1, 'rgba(37, 99, 235, 0.22)');
         ctx.fillStyle = gradRight;
-        ctx.fillRect(490, 110, 340, 260);
+        ctx.fillRect(rightTankX, tankY, tankWidth, tankHeight);
         ctx.strokeStyle = 'rgba(37, 99, 235, 0.35)';
-        ctx.strokeRect(490, 110, 340, 260);
+        ctx.strokeRect(rightTankX, tankY, tankWidth, tankHeight);
 
         // --- ELETRODOS ---
-        let znMetalGrad = ctx.createLinearGradient(110, 140, 150, 140);
+        let electrodeWidth = 35;
+        let electrodeHeight = tankHeight * 0.75;
+        let znX = leftTankX + tankWidth * 0.2;
+        let cuX = rightTankX + tankWidth * 0.8 - electrodeWidth;
+        let electrodeY = tankY + tankHeight * 0.15;
+
+        let znMetalGrad = ctx.createLinearGradient(znX, electrodeY, znX + electrodeWidth, electrodeY);
         znMetalGrad.addColorStop(0, '#64748b');
         znMetalGrad.addColorStop(0.5, '#cbd5e1');
         znMetalGrad.addColorStop(1, '#475569');
         ctx.fillStyle = znMetalGrad;
-        ctx.fillRect(110, 140, 35, 190);
+        ctx.fillRect(znX, electrodeY, electrodeWidth, electrodeHeight);
         ctx.fillStyle = '#f8fafc';
         ctx.font = 'bold 11px Segoe UI';
         ctx.textAlign = 'center';
-        ctx.fillText("Zn (Ânodo)", 127, 125);
+        ctx.fillText("Zn (Ânodo)", znX + electrodeWidth/2, electrodeY - 15);
 
-        let cuMetalGrad = ctx.createLinearGradient(745, 140, 785, 140);
+        let cuMetalGrad = ctx.createLinearGradient(cuX, electrodeY, cuX + electrodeWidth, electrodeY);
         cuMetalGrad.addColorStop(0, '#9a3412');
         cuMetalGrad.addColorStop(0.5, '#f97316');
         cuMetalGrad.addColorStop(1, '#7c2d12');
         ctx.fillStyle = cuMetalGrad;
-        ctx.fillRect(745, 140, 35, 190);
+        ctx.fillRect(cuX, electrodeY, electrodeWidth, electrodeHeight);
         ctx.fillStyle = '#f8fafc';
-        ctx.fillText("Cu (Cátodo)", 762, 125);
+        ctx.fillText("Cu (Cátodo)", cuX + electrodeWidth/2, electrodeY - 15);
 
         // --- FIAÇÃO E VOLTÍMETRO ---
+        let wireY = electrodeY - 60;
+        let znWireX = znX + electrodeWidth/2;
+        let cuWireX = cuX + electrodeWidth/2;
+
         ctx.strokeStyle = '#e2e8f0';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(127, 140);
-        ctx.lineTo(127, 65);
-        ctx.lineTo(450, 65);
-        ctx.lineTo(762, 65);
-        ctx.lineTo(762, 140);
+        ctx.moveTo(znWireX, electrodeY);
+        ctx.lineTo(znWireX, wireY);
+        ctx.lineTo(cx, wireY);
+        ctx.lineTo(cuWireX, wireY);
+        ctx.lineTo(cuWireX, electrodeY);
         ctx.stroke();
 
         ctx.fillStyle = '#0f172a';
         ctx.strokeStyle = voltage === 0 ? '#ef4444' : (voltage < 1.10 ? '#f59e0b' : '#38bdf8');
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(450, 65, 25, 0, Math.PI * 2);
+        ctx.arc(cx, wireY, 25, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
         
         ctx.fillStyle = ctx.strokeStyle;
         ctx.font = 'bold 11px Segoe UI';
         ctx.textAlign = 'center';
-        ctx.fillText(voltage.toFixed(1) + "V", 450, 61);
+        ctx.fillText(voltage.toFixed(1) + "V", cx, wireY - 4);
         ctx.font = '8px Segoe UI';
         ctx.fillStyle = '#94a3b8';
-        ctx.fillText(voltage > 1.10 ? "Forçado" : "Espontâneo", 450, 75);
+        ctx.fillText(voltage > 1.10 ? "Forçado" : "Espontâneo", cx, wireY + 10);
 
         // --- FLUXO DE ELÉTRONS ---
         if (progress > 0 && progress < 1 && voltage > 0) {
@@ -299,12 +319,12 @@
             for (let e = 0; e < electronCount; e++) {
                 let speedFactor = Math.max(0.2, voltage / 1.10);
                 let eProgress = ((progress * speedFactor * 1.5) + (e * (1 / electronCount))) % 1;
-                let ex = 127 + eProgress * (762 - 127);
-                drawSphere(ex, 65, 4, '#38bdf8', 'e⁻');
+                let ex = znWireX + eProgress * (cuWireX - znWireX);
+                drawSphere(ex, wireY, 4, '#38bdf8', 'e⁻');
             }
         }
 
-        // --- ESTEQUIOMETRIA ESCALONADA CORRETA ---
+        // --- ESTEQUIOMETRIA ESCALONADA ---
         let effectiveReaction = Math.min(znTotal, cuTotal);
         let currentReacted = Math.floor(progress * effectiveReaction);
 
@@ -312,29 +332,29 @@
         for (let i = 0; i < znTotal; i++) {
             let col = i % 2;
             let row = Math.floor(i / 2);
-            let x = 117 + col * 15;
-            let y = 150 + row * 14;
+            let x = znX + 5 + col * 14;
+            let y = electrodeY + 20 + row * 14;
 
             if (i >= (znTotal - currentReacted)) {
-                let floatX = x + 45 + (i * 10) % 60;
-                let floatY = y + (i * 5) % 40;
-                drawSphere(floatX, floatY, 6.5, '#38bdf8', 'Zn²⁺');
+                let floatX = x + 35 + (i * 8) % 40;
+                let floatY = y + (i * 4) % 30;
+                drawSphere(floatX, floatY, 6, '#38bdf8', 'Zn²⁺');
             } else {
-                drawSphere(x, y, 6, '#94a3b8');
+                drawSphere(x, y, 5.5, '#94a3b8');
             }
         }
 
-        // Cobre: íons livres que se convertem em depósito metálico no cátodo de forma equivalente
+        // Cobre: íons livres e depósito no cátodo
         for (let i = 0; i < cuTotal; i++) {
-            let startX = 520 + (i % 4) * 25;
-            let startY = 150 + Math.floor(i / 4) * 22;
+            let startX = rightTankX + 30 + (i % 4) * 35;
+            let startY = tankY + 40 + Math.floor(i / 4) * 25;
 
             if (i < currentReacted) {
                 let cuCol = i % 2;
                 let cuRow = Math.floor(i / 2);
-                drawSphere(753 + cuCol * 10, 150 + cuRow * 14, 6, '#f97316', 'Cu');
+                drawSphere(cuX + 5 + cuCol * 12, electrodeY + 20 + cuRow * 14, 5.5, '#f97316', 'Cu');
             } else {
-                drawSphere(startX, startY, 6.5, '#2563eb', 'Cu²⁺');
+                drawSphere(startX, startY, 6, '#2563eb', 'Cu²⁺');
             }
         }
     }
@@ -389,13 +409,6 @@
         draw();
     });
 
-    // Controle de Zoom da Página Inteira
-    zoomSlider.addEventListener('input', (e) => {
-        let zoomValPercent = e.target.value;
-        zoomVal.innerText = zoomValPercent;
-        document.body.style.transform = `scale(${zoomValPercent / 100})`;
-    });
-
     timeSlider.value = 0;
     timeSlider.addEventListener('input', (e) => {
         if (isPlaying) stopSimulation();
@@ -408,7 +421,8 @@
     znAtomsSlider.addEventListener('input', draw);
     cuAtomsSlider.addEventListener('input', draw);
 
-    draw();
+    // Inicialização do tamanho da tela
+    resizeCanvas();
 </script>
 
 </body>
