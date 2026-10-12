@@ -14,6 +14,8 @@
             justify-content: center;
             min-height: 100vh;
             margin: 0;
+            transform-origin: top center; /* Mantém o zoom fixo no topo ao ampliar */
+            transition: transform 0.1s ease-out;
         }
         h2 {
             margin: 0 0 5px 0;
@@ -44,7 +46,7 @@
             justify-content: center;
             border: 1px solid #334155;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
-            max-width: 980px;
+            max-width: 950px;
         }
         .control-group {
             display: flex;
@@ -81,7 +83,7 @@
             border-left: 4px solid #38bdf8;
             padding: 8px 15px;
             border-radius: 0 8px 8px 0;
-            max-width: 950px;
+            max-width: 920px;
             width: 100%;
             font-size: 12px;
             color: #e2e8f0;
@@ -121,8 +123,8 @@
         </div>
 
         <div class="control-group">
-            <label>Zoom: <span id="zoomVal">1.0</span>x</label>
-            <input type="range" id="zoomSlider" min="1.0" max="2.5" step="0.1" value="1.0">
+            <label>Zoom Tela: <span id="zoomVal">100</span>%</label>
+            <input type="range" id="zoomSlider" min="80" max="180" step="5" value="100">
         </div>
 
         <div class="control-group">
@@ -217,22 +219,14 @@
         let znTotal = parseInt(znAtomsSlider.value);
         let cuTotal = parseInt(cuAtomsSlider.value);
         let voltage = parseFloat(voltSlider.value);
-        let zoom = parseFloat(zoomSlider.value);
 
         timeVal.innerText = Math.round(currentProgress);
         durationVal.innerText = durationSlider.value;
         voltVal.innerText = voltage.toFixed(1);
-        zoomVal.innerText = zoom.toFixed(1);
         znAtomsVal.innerText = znTotal;
         cuAtomsVal.innerText = cuTotal;
 
         updateDescription(voltage, znTotal, cuTotal);
-
-        ctx.save();
-        // Aplica o Zoom exatamente igual ao Google Maps (aproximando o centro da tela)
-        ctx.translate(canvas.width / 2, canvas.height / 2);
-        ctx.scale(zoom, zoom);
-        ctx.translate(-canvas.width / 2, -canvas.height / 2);
 
         // --- CUBAS E SOLUÇÕES ---
         let gradLeft = ctx.createLinearGradient(100, 110, 100, 360);
@@ -343,8 +337,6 @@
                 drawSphere(startX, startY, 6.5, '#2563eb', 'Cu²⁺');
             }
         }
-
-        ctx.restore();
     }
 
     function loop(timestamp) {
@@ -397,6 +389,13 @@
         draw();
     });
 
+    // Controle de Zoom da Página Inteira
+    zoomSlider.addEventListener('input', (e) => {
+        let zoomValPercent = e.target.value;
+        zoomVal.innerText = zoomValPercent;
+        document.body.style.transform = `scale(${zoomValPercent / 100})`;
+    });
+
     timeSlider.value = 0;
     timeSlider.addEventListener('input', (e) => {
         if (isPlaying) stopSimulation();
@@ -406,7 +405,6 @@
 
     durationSlider.addEventListener('input', () => { durationVal.innerText = durationSlider.value; });
     voltSlider.addEventListener('input', draw);
-    zoomSlider.addEventListener('input', draw);
     znAtomsSlider.addEventListener('input', draw);
     cuAtomsSlider.addEventListener('input', draw);
 
