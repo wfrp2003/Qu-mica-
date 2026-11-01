@@ -14,6 +14,8 @@
             justify-content: center;
             min-height: 100vh;
             margin: 0;
+            transform-origin: top center;
+            transition: transform 0.1s ease-out;
         }
         h2 {
             margin: 0 0 5px 0;
@@ -44,7 +46,7 @@
             justify-content: center;
             border: 1px solid #334155;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
-            max-width: 950px;
+            max-width: 1000px;
         }
         .control-group {
             display: flex;
@@ -56,7 +58,7 @@
         input[type=range] {
             accent-color: #38bdf8;
             cursor: pointer;
-            width: 130px;
+            width: 110px;
         }
         .btn-container {
             display: flex;
@@ -81,7 +83,7 @@
             border-left: 4px solid #38bdf8;
             padding: 8px 15px;
             border-radius: 0 8px 8px 0;
-            max-width: 920px;
+            max-width: 950px;
             width: 100%;
             font-size: 12px;
             color: #e2e8f0;
@@ -99,7 +101,7 @@
 
     <div class="controls-panel">
         <div class="control-group">
-            <label>Tempo (Linha do Tempo): <span id="timeVal">0</span>%</label>
+            <label>Tempo: <span id="timeVal">0</span>%</label>
             <input type="range" id="timeSlider" min="0" max="100" value="0">
         </div>
         
@@ -116,17 +118,22 @@
         </div>
 
         <div class="control-group">
-            <label>Voltagem Aplicada: <span id="voltVal">1.10</span>V</label>
+            <label>Voltagem: <span id="voltVal">1.10</span>V</label>
             <input type="range" id="voltSlider" min="0.0" max="10.0" step="0.1" value="1.10">
         </div>
 
         <div class="control-group">
-            <label>Átomos Zn (Ânodo): <span id="znAtomsVal">10</span></label>
+            <label>Zoom Tela: <span id="zoomVal">100</span>%</label>
+            <input type="range" id="zoomSlider" min="80" max="180" step="5" value="100">
+        </div>
+
+        <div class="control-group">
+            <label>Átomos Zn: <span id="znAtomsVal">10</span></label>
             <input type="range" id="znAtomsSlider" min="4" max="20" value="10">
         </div>
 
         <div class="control-group">
-            <label>Íons Cu²⁺ (Cátodo): <span id="cuAtomsVal">10</span></label>
+            <label>Íons Cu²⁺: <span id="cuAtomsVal">10</span></label>
             <input type="range" id="cuAtomsSlider" min="4" max="20" value="10">
         </div>
     </div>
@@ -144,12 +151,14 @@
     const resetBtn = document.getElementById('resetBtn');
     const durationSlider = document.getElementById('durationSlider');
     const voltSlider = document.getElementById('voltSlider');
+    const zoomSlider = document.getElementById('zoomSlider');
     const znAtomsSlider = document.getElementById('znAtomsSlider');
     const cuAtomsSlider = document.getElementById('cuAtomsSlider');
 
     const timeVal = document.getElementById('timeVal');
     const durationVal = document.getElementById('durationVal');
     const voltVal = document.getElementById('voltVal');
+    const zoomVal = document.getElementById('zoomVal');
     const znAtomsVal = document.getElementById('znAtomsVal');
     const cuAtomsVal = document.getElementById('cuAtomsVal');
     const infoText = document.getElementById('infoText');
@@ -189,8 +198,9 @@
 
     function updateDescription(voltage, znCount, cuCount) {
         let text = "";
+        let limitante = Math.min(znCount, cuCount);
         if (voltage === 1.10) {
-            text = `<b>Estado de Equilíbrio Padrão (1.10V):</b> A pilha opera no seu potencial termodinâmico ideal. A taxa de oxidação do Zinco ($Zn \\rightarrow Zn^{2+} + 2e^-$) equilibra-se perfeitamente com a redução do Cobre ($Cu^{2+} + 2e^- \\rightarrow Cu$). Corrente estável.`;
+            text = `<b>Estado de Equilíbrio Padrão (1.10V):</b> A pilha opera no seu potencial termodinâmico ideal. A taxa de oxidação do Zinco (Zn → Zn²⁺ + 2e⁻) equilibra-se perfeitamente com a redução do Cobre (Cu²⁺ + 2e⁻ → Cu). Corrente estável.`;
         } else if (voltage > 1.10 && voltage <= 5.0) {
             text = `<b>Eletrólise / Sobretensão (${voltage.toFixed(1)}V > 1.10V):</b> Uma fonte externa força elétrons no sentido contrário ou acelera drasticamente o fluxo. O fluxo de elétrons e a migração iônica tornam-se intensos (alta amperagem simulada), podendo esgotar rapidamente os reagentes limitantes.`;
         } else if (voltage > 5.0) {
@@ -198,7 +208,7 @@
         } else if (voltage > 0 && voltage < 1.10) {
             text = `<b>Sub-potencial (${voltage.toFixed(2)}V):</b> A força motriz é menor que o potencial padrão da pilha. A velocidade de migração dos elétrons diminui proporcionalmente, reduzindo a corrente gerada no circuito externo.`;
         } else {
-            text = `<b>Circuito Aberto / Oposto ($0.0V$):</b> Sem diferença de potencial útil. A reação espontânea cessa e o fluxo de elétrons é interrompido.`;
+            text = `<b>Circuito Aberto / Oposto (0.0V):</b> Sem diferença de potencial útil. A reação espontânea cessa e o fluxo de elétrons é interrompido.`;
         }
 
         if (znCount !== cuCount) {
@@ -224,7 +234,6 @@
         updateDescription(voltage, znTotal, cuTotal);
 
         // --- CUBAS E SOLUÇÕES ---
-        // Cuba Esquerda (ZnSO4)
         let gradLeft = ctx.createLinearGradient(100, 110, 100, 360);
         gradLeft.addColorStop(0, 'rgba(56, 189, 248, 0.05)');
         gradLeft.addColorStop(1, 'rgba(56, 189, 248, 0.15)');
@@ -233,7 +242,6 @@
         ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
         ctx.strokeRect(70, 110, 340, 260);
 
-        // Cuba Direita (CuSO4)
         let gradRight = ctx.createLinearGradient(490, 110, 490, 360);
         gradRight.addColorStop(0, 'rgba(37, 99, 235, 0.08)');
         gradRight.addColorStop(1, 'rgba(37, 99, 235, 0.22)');
@@ -243,7 +251,6 @@
         ctx.strokeRect(490, 110, 340, 260);
 
         // --- ELETRODOS ---
-        // Zinco (Ânodo)
         let znMetalGrad = ctx.createLinearGradient(110, 140, 150, 140);
         znMetalGrad.addColorStop(0, '#64748b');
         znMetalGrad.addColorStop(0.5, '#cbd5e1');
@@ -255,7 +262,6 @@
         ctx.textAlign = 'center';
         ctx.fillText("Zn (Ânodo)", 127, 125);
 
-        // Cobre (Cátodo)
         let cuMetalGrad = ctx.createLinearGradient(745, 140, 785, 140);
         cuMetalGrad.addColorStop(0, '#9a3412');
         cuMetalGrad.addColorStop(0.5, '#f97316');
@@ -276,7 +282,6 @@
         ctx.lineTo(762, 140);
         ctx.stroke();
 
-        // Display de Voltagem
         ctx.fillStyle = '#0f172a';
         ctx.strokeStyle = voltage === 0 ? '#ef4444' : (voltage < 1.10 ? '#f59e0b' : '#38bdf8');
         ctx.lineWidth = 2;
@@ -308,7 +313,6 @@
         let znReacted = Math.floor(progress * znTotal);
         let cuReacted = Math.floor(progress * cuTotal);
 
-        // Placa de Zinco e Íons Zn2+ liberados
         for (let i = 0; i < znTotal; i++) {
             let col = i % 2;
             let row = Math.floor(i / 2);
@@ -324,7 +328,6 @@
             }
         }
 
-        // Íons Cu2+ livres e Depósito no Cátodo
         for (let i = 0; i < cuTotal; i++) {
             let startX = 530 + (i * 22) % 150;
             let startY = 160 + (i * 18) % 140;
@@ -387,6 +390,13 @@
         currentProgress = 0;
         timeSlider.value = 0;
         draw();
+    });
+
+    // Controle de Zoom da Página Inteira
+    zoomSlider.addEventListener('input', (e) => {
+        let zoomValPercent = e.target.value;
+        zoomVal.innerText = zoomValPercent;
+        document.body.style.transform = `scale(${zoomValPercent / 100})`;
     });
 
     timeSlider.addEventListener('input', (e) => {
